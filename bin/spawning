@@ -1,0 +1,9 @@
+#!/home/thrawn/dev/apple-env/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'Spawning==0.9.3rc4','console_scripts','spawning'
+__requires__ = 'Spawning==0.9.3rc4'
+import sys
+from pkg_resources import load_entry_point
+
+sys.exit(
+   load_entry_point('Spawning==0.9.3rc4', 'console_scripts', 'spawning')()
+)
