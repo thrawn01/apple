@@ -1,0 +1,6 @@
+[console_scripts]
+spawn = spawning.spawning_controller:main
+
+[paste.server_factory]
+main = spawning.paste_factory:server_factory
+
