@@ -1,0 +1,44 @@
+# ---------------------------------------------
+# Instructions used to create the virtual env
+# ---------------------------------------------
+sudo aptitude install python-setuptools python-dev build-essential git-core gitk
+
+sudo easy_install -U pip
+sudo pip install -U virtualenv
+
+# Create the virt environment
+virtualenv --python=python2.6 --no-site-packages apple-env
+
+# Install packages
+source apple-env/bin/activate
+
+# Install spawning and depends
+hg clone http://bitbucket.org/which_linden/eventlet
+cd eventlet
+python setup.py install
+
+git clone http://github.com/rtyler/Spawning.git
+cd Spawning
+python setup.py install
+
+# Unzip to the greenlet package
+cd lib/python2.6/site-packages/
+mkdir greenlet-0.3.1-py2.6.egg
+cd greenlet-0.3.1-py2.6.egg
+mv ../greenlet-0.3.1-py2.6-linux-x86_64.egg .
+unzip greenlet-0.3.1-py2.6-linux-x86_64.egg
+cd ..
+
+# Edit the easy-install.pth
+# change greenlet-0.3.1-py2.6-linux-x86_64.egg to greenlet-0.3.1-py2.6.egg  
+vi easy-install.pth
+
+cd ../../../
+easy_install bottle
+easy_install ipython
+rm -rf lib/python2.6/site-packages/ipython-0.10-py2.6.egg/share
+
+# ---------------------------------------------
+# Instructions for running the service
+# ---------------------------------------------
+
