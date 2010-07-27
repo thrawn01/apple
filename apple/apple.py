@@ -10,12 +10,26 @@ from eventlet.green import socket
 
 log = logging.getLogger("apple")
 
+class Async( object ):
+    def __init__( self, handler ):
+        self.handler = handler
 
-class WebSocket( object ):
+    def __call__(self, environ, start_response):
+        log.debug( "Async.__call__" )
+        eventlet_socket = environ['eventlet.input'].get_socket()
+        socket = Socket( eventlet_socket, environ )
+        # TODO: Do we really need this?
+        status = '%d %s' % (response.status, HTTP_CODES[response.status])
+        start_response(status, response.headerlist)
+
+        self.handler( socket )
+        return wsgi.ALREADY_HANDLED
+
+
+class WebSocket( Async ):
     """ Provides a small wrapper for eventlet.WebSocketWSGI """
 
     def __init__( self, handler ):
-        self.type = 'websocket'
         self.handler = handler
         def wrapper( ws ):
             class Wrapper( object ):
@@ -29,18 +43,6 @@ class WebSocket( object ):
     def __call__(self, environ, start_response):
         return self.websocket(environ, start_response )
         
-
-class Async( object ):
-    def __init__( self, handler ):
-        self.type = 'async'
-        self.handler = handler
-
-    def __call__(self, environ, start_response):
-        eventlet_socket = environ['eventlet.input'].get_socket()
-        socket = Socket( eventlet_socket, environ )
-        self.handler( socket )
-        return wsgi.ALREADY_HANDLED
-
 
 class Socket( object ):
     def __init__( self, socket, environ ):
@@ -77,7 +79,10 @@ class Apple(Bottle):
 
         def handle(url, method):
             handler, args = self.match_url(url, method)
-            log.debug( "Calling: %s(%s)" % (handler.__name__,args) )
+            if isinstance( handler, Async ):
+                log.debug( "Async Call: %s(%s)" % (handler, args) )
+                yield handler( environ, start_response )
+            log.debug( "Calling: %s(%s)" % (handler, args) )
 
             #if isinstance( handler, websocket.WebSocketWSGI ):
                 #log.debug( "Calling '%s' as WebSocketWSGI" % handler.handler.__name__ )
@@ -104,6 +109,7 @@ class Apple(Bottle):
         except (KeyboardInterrupt, SystemExit):
             raise
         except HTTPResponse, e:
+            start_response( '%s %s' % (e.status, HTTP_CODES[e.status]), [('Content-Type', 'text/html')] )
             return e
         except Exception, e:
             message = "Un-Caught execption '%s' PATH '%s' " % (repr(e), environ.get('PATH_INFO', '/'))
@@ -114,7 +120,7 @@ class Apple(Bottle):
             environ['wsgi.errors'].write( message )
             
             # Let the client know there was an internal error
-            start_response('500 %s' % HTTP_CODES[500], [('Content-Type', 'text/html')])
+            start_response( '%s %s' % (500, HTTP_CODES[500]), [('Content-Type', 'text/html')] )
             return [tob( '500 %s - Un-Caught exception, Check server logs for stacktrace' % HTTP_CODES[500] ) ]
 
     def _async_cast(self, result, request, response):

@@ -20,11 +20,14 @@ def websocket(ws):
     args = ws.environ['apple.args']
     return "Hello World, with WebSockets"
 
-@wsgi.route('/apple')
+@wsgi.route('/async')
 @wsgi.async
 def async( sock ):
+    log.debug("async Call")
     #result = sock.read()
-    sock.write( "Hello World" )
+    sock.write( "Hello World, Async" )
+    log.debug("async Call - done")
+    return ""
 
 @wsgi.route('/apple')
 def apple():
