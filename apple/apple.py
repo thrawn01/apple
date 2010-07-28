@@ -14,15 +14,10 @@ class Async( object ):
     def __init__( self, handler ):
         self.handler = handler
 
-    def __call__(self, environ, start_response):
-        log.debug( "Async.__call__" )
-        eventlet_socket = environ['eventlet.input'].get_socket()
-        socket = Socket( eventlet_socket, environ )
-        # TODO: Do we really need this?
-        status = '%d %s' % (response.status, HTTP_CODES[response.status])
-        start_response(status, response.headerlist)
-
-        self.handler( socket )
+    def __call__( self, environ, start_response, args ):
+        start_response( '%d %s' % ( response.status, HTTP_CODES[response.status] ), response.headerlist )
+        args['socket'] = Socket( environ['eventlet.input'].get_socket(), environ )
+        self.handler( **args )
         return wsgi.ALREADY_HANDLED
 
 
@@ -35,13 +30,15 @@ class WebSocket( Async ):
             class Wrapper( object ):
                 def write( self, message ):
                     return ws.send( message )
+
                 def read( self ):
-                    return ws.wait( )
+                    return ws.wait()
+
             return handler( Wrapper() )
         self.websocket = websocket.WebSocketWSGI( wrapper )
         
-    def __call__(self, environ, start_response):
-        return self.websocket(environ, start_response )
+    def __call__( self, environ, start_response):
+        return self.websocket( environ, start_response )
         
 
 class Socket( object ):
@@ -57,7 +54,7 @@ class Socket( object ):
             return None
         return result
         
-    def write( self, message):
+    def write( self, message ):
         self.lock.acquire()
         try:
             return self.socket.sendall( message )
@@ -81,21 +78,23 @@ class Apple(Bottle):
             environ['bottle.app'] = self
             request.bind(environ)
             response.bind(self)
-            # Make the appropriate method call
             handler, args = self.match_url(request.path, request.method)
+            # If its a Websocket or Async call
             if isinstance( handler, Async ):
-                log.debug( "Async Call: %s(%s)" % (handler, args) )
-                return handler( environ, start_response )
-            log.debug( "Calling: %s(%s)" % (handler, args) )
+                return handler( environ, start_response, args )
 
+            result = handler( **args )
             status = '%d %s' % (response.status, HTTP_CODES[response.status])
+            start_response(status, response.headerlist)
             # RFC2616 Section 4.3
             if response.status in (100, 101, 204, 304) or request.method == 'HEAD':
-                start_response(status, response.headerlist)
                 return []
 
-            start_response(status, response.headerlist)
-            return self._async_cast(result, request, response)
+            socket = Socket( environ['eventlet.input'].get_socket(), environ )
+            for value in iter(result):
+                socket.write( self._cast( value, request, response ) )
+
+            return []
 
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -113,9 +112,5 @@ class Apple(Bottle):
             # Let the client know there was an internal error
             start_response( '%s %s' % (500, HTTP_CODES[500]), [('Content-Type', 'text/html')] )
             return [tob( '500 %s - Un-Caught exception, Check server logs for stacktrace' % HTTP_CODES[500] ) ]
-
-    def _async_cast(self, result, request, response):
-        for value in result:
-            return self._cast( value, request, response )
 
 

@@ -6,9 +6,6 @@ from apple import Apple
 import logging
 import time
 
-#from eventlet import websocket
-#@websocket.WebSocketWSGI
-
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 log = logging.getLogger( "test" )
 
@@ -16,17 +13,20 @@ wsgi = Apple()
 
 @wsgi.route('/websocket')
 @wsgi.websocket
-def websocket(ws):
-    args = ws.environ['apple.args']
-    return "Hello World, with WebSockets"
+def websocket( websocket ):
+    socket.write( "Wait for it - " )
+    result = socket.read()
+    socket.write( "Hello World, I Got '%s'" % result )
+
 
 @wsgi.route('/async')
 @wsgi.async
-def async( sock ):
+def async( socket ):
     #result = sock.read()
-    sock.write( "Wait for it - " )
+    socket.write( "Wait for it - " )
     time.sleep(2)
-    sock.write( "Hello World, Async" )
+    socket.write( "Hello World, Async" )
+
 
 @wsgi.route('/apple')
 def apple():
