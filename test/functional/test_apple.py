@@ -6,18 +6,18 @@ import unittest, sys, os, time, logging
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 log = logging.getLogger( "test" )
 
-wsgi = Apple()
+apple = Apple()
 
-@wsgi.route('/websocket')
-@wsgi.websocket
+@apple.route('/websocket')
+@apple.websocket
 def websocket( websocket ):
     socket.write( "Wait for it - " )
     result = socket.read()
     socket.write( "Hello World, I Got '%s'" % result )
 
 
-@wsgi.route('/async')
-@wsgi.async
+@apple.route('/async')
+@apple.async
 def async( socket ):
     #result = sock.read()
     socket.write( "Wait for it - " )
@@ -25,7 +25,7 @@ def async( socket ):
     socket.write( "Hello World, Async" )
 
 
-@wsgi.route('/apple')
+@apple.route('/apple')
 def apple():
     yield "Wait for it - "
     time.sleep(2)
@@ -35,10 +35,11 @@ def apple():
 class AppleTests( TestBase ):
 
     def setUp(self):
-        self.site = wsgi.default_app()
+        TestBase.setUp(self)
+        self.site = apple
 
     def tearDown(self):
-        pass
+        TestBase.tearDown(self)
 
     def testAsyncCall(self):
         response = self.request( method='GET', path='/async', params={} )

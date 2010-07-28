@@ -1,8 +1,22 @@
 # Taken from eventlet wsgi_test.py
+import unittest
+import eventlet
+from eventlet.green import urllib2
+from eventlet.green import httplib
+from eventlet.websocket import WebSocket, WebSocketWSGI
+from eventlet import wsgi
+from eventlet import event
+from eventlet import greenthread
+from eventlet import debug, hubs
+
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+
+class TestIsTakingTooLong(Exception):
+    """ Custom exception class to be raised when a test's runtime exceeds a limit. """
+    pass
 
 
 class LimitedTestCase(unittest.TestCase):
@@ -60,8 +74,9 @@ class TestBase( LimitedTestCase ):
         self.logfile = StringIO()
         self.site = DummySite()
         self.killer = None
-        self.set_site()
         self.spawn_server()
+        self.port = 0
+        self.host = 'localhost'
         self.conn_class = httplib.HTTPConnection
         #self.conn_class = httplib.HTTPSConnection
 
@@ -70,8 +85,8 @@ class TestBase( LimitedTestCase ):
         eventlet.sleep(0)
         LimitedTestCase.tearDown( self )
 
-    def connect( host='localhost', port=self.port ):
-        self.connection = self.conn_class( host, port=port )
+    def connect( self, host='localhost' ):
+        self.connection = self.conn_class( self.host, port=self.port )
 
     def request( self, method='GET', path='/', data=[], headers={}, params={} ):
         try:
@@ -104,9 +119,6 @@ class TestBase( LimitedTestCase ):
         self.killer = eventlet.spawn_n(
             wsgi.server,
             **new_kwargs)
-
-    def set_site(self):
-        raise NotImplementedError
 
     def assert_less_than(self, a,b,msg=None):
         if msg:
