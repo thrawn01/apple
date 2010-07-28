@@ -77,27 +77,18 @@ class Apple(Bottle):
     def __call__(self, environ, start_response):
         """ Apple WSGI-interface. """
 
-        def handle(url, method):
-            handler, args = self.match_url(url, method)
-            if isinstance( handler, Async ):
-                log.debug( "Async Call: %s(%s)" % (handler, args) )
-                yield handler( environ, start_response )
-            log.debug( "Calling: %s(%s)" % (handler, args) )
-
-            #if isinstance( handler, websocket.WebSocketWSGI ):
-                #log.debug( "Calling '%s' as WebSocketWSGI" % handler.handler.__name__ )
-                #environ['apple.args'] = args
-                #yield handler( environ, start_response )
-            #else:
-                #yield handler(**args)
-
         try:
             environ['bottle.app'] = self
             request.bind(environ)
             response.bind(self)
-            result = handle(request.path, request.method)
-            status = '%d %s' % (response.status, HTTP_CODES[response.status])
+            # Make the appropriate method call
+            handler, args = self.match_url(request.path, request.method)
+            if isinstance( handler, Async ):
+                log.debug( "Async Call: %s(%s)" % (handler, args) )
+                return handler( environ, start_response )
+            log.debug( "Calling: %s(%s)" % (handler, args) )
 
+            status = '%d %s' % (response.status, HTTP_CODES[response.status])
             # RFC2616 Section 4.3
             if response.status in (100, 101, 204, 304) or request.method == 'HEAD':
                 start_response(status, response.headerlist)

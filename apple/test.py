@@ -23,17 +23,16 @@ def websocket(ws):
 @wsgi.route('/async')
 @wsgi.async
 def async( sock ):
-    log.debug("async Call")
     #result = sock.read()
+    sock.write( "Wait for it - " )
+    time.sleep(2)
     sock.write( "Hello World, Async" )
-    log.debug("async Call - done")
-    return ""
 
 @wsgi.route('/apple')
 def apple():
-    yield "Wait for it"
+    yield "Wait for it - "
     time.sleep(2)
-    yield "Hello World"
+    yield "Hello World, Async with Yield"
 
 
 if __name__ == "__main__":
