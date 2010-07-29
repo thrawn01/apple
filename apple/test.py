@@ -1,6 +1,5 @@
 # Taken from eventlet wsgi_test.py
-import unittest
-import eventlet
+import unittest, eventlet, logging, sys
 from eventlet.green import urllib2
 from eventlet.green import httplib
 from eventlet.websocket import WebSocket, WebSocketWSGI
@@ -8,6 +7,9 @@ from eventlet import wsgi
 from eventlet import event
 from eventlet import greenthread
 from eventlet import debug, hubs
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+log = logging.getLogger( "apple.test" )
 
 try:
     from cStringIO import StringIO
@@ -39,6 +41,7 @@ class LimitedTestCase(unittest.TestCase):
                                       TestIsTakingTooLong(new_timeout))
 
     def tearDown(self):
+        log.debug( "LimitedTestCase::tearDown()" )
         self.timer.cancel()
         try:
             hub = hubs.get_hub()
@@ -69,28 +72,31 @@ class DummySite(object):
 
 
 class TestBase( LimitedTestCase ):
+    site = None
+
     def setUp(self):
+        log.debug( "setUp()" )
         LimitedTestCase.setUp( self )
         self.logfile = StringIO()
-        self.site = DummySite()
         self.killer = None
-        self.spawn_server()
-        self.port = 0
         self.host = 'localhost'
         self.conn_class = httplib.HTTPConnection
         #self.conn_class = httplib.HTTPSConnection
+        self.spawn_server()
 
     def tearDown(self):
+        log.debug( "TestBase::tearDown()" )
         greenthread.kill(self.killer)
         eventlet.sleep(0)
         LimitedTestCase.tearDown( self )
 
     def connect( self, host='localhost' ):
-        self.connection = self.conn_class( self.host, port=self.port )
+        log.debug( "Connecting '%s:%s'" % (host, self.port) )
+        return self.conn_class( self.host, port=self.port )
 
     def request( self, method='GET', path='/', data=[], headers={}, params={} ):
         try:
-            self.connect()
+            self.connection = self.connect()
             self.connection.request(method, path, data, headers)
             return self.connection.getresponse()
         except httplib.HTTPException:
@@ -119,6 +125,7 @@ class TestBase( LimitedTestCase ):
         self.killer = eventlet.spawn_n(
             wsgi.server,
             **new_kwargs)
+        log.debug( "Server Spawned '%s:%s'" % ('localhost', self.port) )
 
     def assert_less_than(self, a,b,msg=None):
         if msg:

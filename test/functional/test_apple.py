@@ -21,30 +21,26 @@ def websocket( websocket ):
 def async( socket ):
     #result = sock.read()
     socket.write( "Wait for it - " )
-    time.sleep(2)
     socket.write( "Hello World, Async" )
 
 
-@apple.route('/apple')
-def apple():
+@apple.route('/helloworld')
+def helloworld():
     yield "Wait for it - "
-    time.sleep(2)
     yield "Hello World, Async with Yield"
 
 
 class AppleTests( TestBase ):
 
     def setUp(self):
-        TestBase.setUp(self)
         self.site = apple
+        TestBase.setUp(self)
 
     def tearDown(self):
         TestBase.tearDown(self)
 
     def testAsyncCall(self):
         response = self.request( method='GET', path='/async', params={} )
-
-        for value in response:
-            print "I Got '%s'" % value
-
+        self.assertEquals( response.status, 200 )
+        self.assertEquals( response.read(), "Wait for it - Hello World, Async" )
 
