@@ -1,0 +1,70 @@
+The What
+=================
+Apple is my attempt at a micro web framework with async support. The goal of this project is to 
+facilitate the creation of robust high performance async web services. The current state is very 
+alpha, using eventlet as the async http server and bottle as a starting for point for the web framework.
+
+The Why
+=================
+All Frameworks that support vanilla WSGI do not support async communication with the client. 
+At a minimum a web service framework should be able to 'yield' data as it is made available 
+(For service composition and large data transfers). (TODO: Maybe an example of why WSGI are not adequate)
+
+The How
+=================
+The Short term Goal of apple is to provide
+    * WebSockets Support
+            @route('/websocket')
+            @websocket
+            def websocket( websocket ):
+                socket.write( "Wait for it - " )
+                result = socket.read()
+                socket.write( "Hello World, I Got '%s'" % result )
+
+    * Full Async Support
+            @route('/echo')
+            @async
+            def echo( socket ):
+                result = socket.read()
+                socket.write( "Got %s" % result )
+ 
+    * Generator style yields of data
+            @route('/helloworld')
+            def helloworld():
+                yield "Wait for it - "
+                time.sleep(2)
+                yield "Hello World, Async with Yield"
+ 
+    * Functional Testing framework
+            class AppleTests( TestBase ):
+                def testAsyncCall(self):
+                    response = self.request( method='GET', path='/helloworld', params={} )
+                    self.assertEquals( response.body, "Wait for it - Hello World, Async with Yield" )
+
+
+The Long term goals are
+    * WADL Generation
+    * Human Readable Documentation Generation for REST interfaces
+    * Decorator sytle provider support ( like JAX-RS )
+
+            class Hello(object):
+                message = "Hello World"
+
+            @route('/helloworld')
+            @produces("application/xml")
+            def helloworld():
+                # Returns <Hello><message>Hello World</message></Hello>
+                return Hello()
+
+            GET http://thrawn01.org/helloworld
+                        
+    * Maybe routing at the class level
+
+            @route( '/rest' )
+            class Rest(object):
+                @route('/helloworld')
+                def helloworld():
+                    return "Hello World"
+                
+            GET http://thrawn01.org/rest/helloworld
+
