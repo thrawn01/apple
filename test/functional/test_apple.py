@@ -1,6 +1,5 @@
 from apple import Apple
 from apple.test import TestBase
-
 import unittest, sys, os, time, logging
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -11,10 +10,9 @@ apple = Apple()
 @apple.route('/websocket')
 @apple.websocket
 def websocket( websocket ):
-    socket.write( "Wait for it - " )
-    result = socket.read()
-    socket.write( "Hello World, I Got '%s'" % result )
-
+    websocket.write( "Wait for it - " )
+    result = websocket.read()
+    websocket.write( "Hello World, I Got '%s'" % result )
 
 @apple.route('/async')
 @apple.async
@@ -32,15 +30,18 @@ def helloworld():
 
 class AppleTests( TestBase ):
 
-    def setUp(self):
+    def set_site(self):
         self.site = apple
-        TestBase.setUp(self)
-
-    def tearDown(self):
-        TestBase.tearDown(self)
 
     def testAsyncCall(self):
         response = self.request( method='GET', path='/async', params={} )
         self.assertEquals( response.status, 200 )
         self.assertEquals( response.read(), "Wait for it - Hello World, Async" )
+
+    def testWebSocket(self):
+        response = self.request( method='WEBSOCK', path='/websocket', params={} )
+        #self.assertEquals( response.status, 101 )
+        response.write( "Testing" )
+        self.assertEquals( response.read(), "Wait for it - " )
+        self.assertEquals( response.read(), "Hello World, I Got 'Testing'" )
 

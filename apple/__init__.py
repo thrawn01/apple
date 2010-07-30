@@ -37,7 +37,7 @@ class WebSocket( Async ):
             return handler( Wrapper() )
         self.websocket = websocket.WebSocketWSGI( wrapper )
         
-    def __call__( self, environ, start_response):
+    def __call__( self, environ, start_response, args ):
         return self.websocket( environ, start_response )
         
 

@@ -1,5 +1,5 @@
 # Taken from eventlet wsgi_test.py
-import unittest, eventlet, logging, sys
+import unittest, eventlet, logging, sys, urllib, socket
 from eventlet.green import urllib2
 from eventlet.green import httplib
 from eventlet.websocket import WebSocket, WebSocketWSGI
@@ -16,8 +16,10 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-class TestIsTakingTooLong(Exception):
-    """ Custom exception class to be raised when a test's runtime exceeds a limit. """
+class TestIsTakingTooLong( Exception ):
+    pass
+
+class NotImplemented( Exception ):
     pass
 
 
@@ -71,8 +73,33 @@ class DummySite(object):
         return self.application(env, start_response)
 
 
+class WebSocketResponse( object ):
+    def __init__(self, sock ):
+        resp = httplib.HTTPResponse( sock, method='GET' )
+        resp.begin()
+        self.status = resp.status
+        environ = { 
+            'HTTP_ORIGIN': resp.getheader( 'HTTP_ORIGIN', '' ),
+            'HTTP_WEBSOCKET_PROTOCOL': resp.getheader( 'HTTP_WEBSOCKET_PROTOCOL', '' ),
+            'PATH_INFO': resp.getheader( 'PATH_INFO', '' ) }
+        self.sock = WebSocket( sock=sock, environ=environ, version=0 )
+
+    def write( self, message ):
+        result = self.sock.send( message )
+        eventlet.sleep(0.001)
+        return result
+
+    def read( self ):
+        result = self.sock.wait()
+        eventlet.sleep(0.001)
+        return result
+
+    def close( self ):
+        sock.close()
+        eventlet.sleep(0.01)
+
+
 class TestBase( LimitedTestCase ):
-    site = None
 
     def setUp(self):
         log.debug( "setUp()" )
@@ -82,6 +109,7 @@ class TestBase( LimitedTestCase ):
         self.host = 'localhost'
         self.conn_class = httplib.HTTPConnection
         #self.conn_class = httplib.HTTPSConnection
+        self.set_site()
         self.spawn_server()
 
     def tearDown(self):
@@ -95,13 +123,36 @@ class TestBase( LimitedTestCase ):
         return self.conn_class( self.host, port=self.port )
 
     def request( self, method='GET', path='/', data=[], headers={}, params={} ):
+        if method == "WEBSOCK":
+            return self.websocket_request( path, data, headers, params )
         try:
             self.connection = self.connect()
+            # TODO: Encode params in url
             self.connection.request(method, path, data, headers)
             return self.connection.getresponse()
         except httplib.HTTPException:
             raise
-        
+    
+    def websocket_request( self, path='/', data=[], headers={}, params={} ):
+        request_header = ( "GET %s?%s HTTP/1.1" % ( path, urllib.urlencode( params ) ) )
+        origin = "Origin: http://localhost:%s" % self.port
+        headers = [
+                request_header,
+                "Upgrade: WebSocket",
+                "Connection: Upgrade",
+                "Host: localhost:%s" % self.port,
+                origin,
+                "WebSocket-Protocol: ws", ]
+
+        sock = eventlet.connect( ( 'localhost', self.port ) )
+        sock.sendall( '\r\n'.join( headers ) + '\r\n\r\n' )
+
+        #first_resp = sock.recv( 1024 )
+        #log.debug( "WebSocket Resp: %s" % first_resp )
+        #return WebSocketResponse( int( first_resp.split(' ')[1] ) )
+
+        return WebSocketResponse( sock )
+
     def spawn_server(self, **kwargs):
         """Spawns a new wsgi server with the given arguments.
         Sets self.port to the port of the server, and self.killer is the greenlet
@@ -142,4 +193,7 @@ class TestBase( LimitedTestCase ):
             self.assert_(a<=b, "%s not less than or equal to %s" % (a,b))
 
     assertLessThanEqual = assert_less_than_equal
+
+    def set_site( self ):
+        raise NotImplemented()
 
