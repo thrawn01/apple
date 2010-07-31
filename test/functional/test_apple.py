@@ -10,9 +10,9 @@ apple = Apple()
 @apple.route('/websocket')
 @apple.websocket
 def websocket( websocket ):
-    websocket.write( "Wait for it - " )
-    result = websocket.read()
-    websocket.write( "Hello World, I Got '%s'" % result )
+    websocket.send( "Wait for it - " )
+    result = websocket.recv()
+    websocket.send( "Hello World, I Got '%s'" % result )
 
 @apple.route('/async')
 @apple.async
@@ -40,8 +40,8 @@ class AppleTests( TestBase ):
 
     def testWebSocket(self):
         response = self.request( method='WEBSOCK', path='/websocket', params={} )
-        #self.assertEquals( response.status, 101 )
-        response.write( "Testing" )
-        self.assertEquals( response.read(), "Wait for it - " )
-        self.assertEquals( response.read(), "Hello World, I Got 'Testing'" )
+        self.assertEquals( response.status, 101 )
+        self.assertEquals( response.recv(), "Wait for it - " )
+        response.send( "Testing" )
+        self.assertEquals( response.recv(), "Hello World, I Got 'Testing'" )
 

@@ -28,10 +28,10 @@ class WebSocket( Async ):
         self.handler = handler
         def wrapper( ws ):
             class Wrapper( object ):
-                def write( self, message ):
+                def send( self, message ):
                     return ws.send( message )
 
-                def read( self ):
+                def recv( self ):
                     return ws.wait()
 
             return handler( Wrapper() )

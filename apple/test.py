@@ -84,12 +84,12 @@ class WebSocketResponse( object ):
             'PATH_INFO': resp.getheader( 'PATH_INFO', '' ) }
         self.sock = WebSocket( sock=sock, environ=environ, version=0 )
 
-    def write( self, message ):
+    def send( self, message ):
         result = self.sock.send( message )
         eventlet.sleep(0.001)
         return result
 
-    def read( self ):
+    def recv( self ):
         result = self.sock.wait()
         eventlet.sleep(0.001)
         return result
